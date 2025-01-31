@@ -1,1 +1,1 @@
-+ openCV
+da scaricare openCV
