@@ -6,6 +6,7 @@
 
 #include "harris.cpp"
 #include "fast.cpp"
+#include "draw_corners.cpp"
 
 using namespace cv;
 using namespace std;
@@ -14,13 +15,15 @@ Mat img, imgWithCorners;
 vector<KeyPoint> keypoints;
 
 // Parametri di default per Harris ("int" perchè è il tipo che vuole createTrackBar(), li convertirò successivamente)
-int window_harris = 9;
-int sigma_bar_harris = 25;
+int window_harris = 11;
+int sigma_bar_harris = 10;
 int k_bar_harris = 4;
-int threshold_bar_harris = 10;
+int threshold_bar_harris = 90;
 
 // Harris corner detection
 void updateCornersHarris(int, void*) {
+    imgWithCorners = img.clone();
+
     if (window_harris % 2 == 0) {
         window_harris++;
     }
@@ -31,10 +34,9 @@ void updateCornersHarris(int, void*) {
     float k = 0.04f + (k_bar_harris / 100.0f) * (0.06f - 0.04f);  // K va tra 0.04 e 0.06
     float threshold = threshold_bar_harris / 100.0f;  // Threshold va tra 0 e 1
 
-    auto[corners, keypoints] = harrisCornerDetection(img, window_harris, sigma, k, threshold);
+    keypoints = harrisCornerDetection(img, window_harris, sigma, k, threshold);
 
-    imgWithCorners = img.clone();
-    drawCorners(imgWithCorners, corners, threshold);
+    drawCorners(imgWithCorners, keypoints);
 
     // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
     Mat resizedImg;
@@ -82,17 +84,7 @@ void updateCornersFast(int, void*) {
 
     keypoints = fastCornerDetection(img, threshold_bar_fast, n_bar_fast, dist_bar_fast);
 
-    for (int i = 0; i < keypoints.size(); i++) {
-        line(imgWithCorners, 
-             Point(cvRound(keypoints[i].pt.x) - 5, cvRound(keypoints[i].pt.y) - 5), 
-             Point(cvRound(keypoints[i].pt.x) + 5, cvRound(keypoints[i].pt.y) + 5), 
-             Scalar(0, 255, 0));
-
-        line(imgWithCorners, 
-             Point(cvRound(keypoints[i].pt.x) - 5, cvRound(keypoints[i].pt.y) + 5), 
-             Point(cvRound(keypoints[i].pt.x) + 5, cvRound(keypoints[i].pt.y) - 5), 
-             Scalar(0, 255, 0));
-    }
+    drawCorners(imgWithCorners, keypoints);
 
     // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
     Mat resizedImg;

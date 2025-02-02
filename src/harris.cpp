@@ -18,9 +18,9 @@ Mat rgbToGrayscale(const Mat& imgRGB) {
 pair<Mat, Mat> gradient(const Mat& img) {
     Mat Ix, Iy;
 
-    // Calcola il gradiente usando la funzione Sobel di OpenCV
-    Sobel(img, Ix, CV_32F, 1, 0, 3);
-    Sobel(img, Iy, CV_32F, 0, 1, 3);
+    // Calcola il gradiente usando la funzione Scharr di OpenCV, che è ottimizzato per gradienti più precisi, al posto di calcolarlo con Sobel.
+    Scharr(img, Ix, CV_32F, 1, 0);
+    Scharr(img, Iy, CV_32F, 0, 1);
 
     return {Ix, Iy};
 }
@@ -58,12 +58,20 @@ Mat harrisResponse(const Mat& SxSx, const Mat& SySy, const Mat& SxSy, float k) {
             
             float det = a * c - b * b;
             float trace = a + c;
-            
-            corners.at<float>(y, x) = det - k * trace * trace;  // Avrei potuto anche settare ogni elemento come det/trace.
-                                                                // Cit: (en.wikipedia.org)
-                                                                //    k is an empirically determined constant: k in [0.04, 0.06].
+
+            if (trace != 0) {
+                corners.at<float>(y, x) = det / trace;  // Avrei potuto anche settare ogni elemento come det - k * trace * trace.
+                                                        // Cit: (en.wikipedia.org)
+                                                        //    k is an empirically determined constant: k in [0.04, 0.06].
+            }
+            else {
+                corners.at<float>(y, x) = det / trace;
+            }
+
         }
     }
+
+    normalize(corners, corners, 0, 255, NORM_MINMAX);
     
     return corners;
 }
@@ -71,7 +79,7 @@ Mat harrisResponse(const Mat& SxSx, const Mat& SySy, const Mat& SxSy, float k) {
 // IMPLEMENTAZIONE FROM SCRATCH
 Mat nonms(const Mat& corners, float threshold) {
     Mat cornersSuppressed = Mat::zeros(corners.size(), CV_32F);
-    
+
     for (int y = 1; y < corners.rows - 1; y++) {
         for (int x = 1; x < corners.cols - 1; x++) {
             float pixel = corners.at<float>(y, x);
@@ -134,7 +142,7 @@ vector<KeyPoint> extractKeypoints(const Mat& corners, float threshold = 0.2) {
 Cit: (en.wikipedia.org)
     Commonly, Harris corner detector algorithm can be divided into five steps:
 */
-pair<Mat, vector<KeyPoint>> harrisCornerDetection(const Mat& imgRGB, int window = 3, double sigma = 2.0, float k = 0.04, float threshold = 0.2) {
+vector<KeyPoint> harrisCornerDetection(const Mat& imgRGB, int window = 3, double sigma = 2.0, float k = 0.04, float threshold = 0.2) {
     // 1. Color to grayscale
     Mat img = rgbToGrayscale(imgRGB);
     
@@ -150,23 +158,5 @@ pair<Mat, vector<KeyPoint>> harrisCornerDetection(const Mat& imgRGB, int window 
     // 5. Non-maximum suppression
     Mat corners = nonms(cornersNonSuppressed, threshold);
     
-    return {corners, extractKeypoints(corners)};
-}
-
-// Disegna i corner
-void drawCorners(Mat& img, const Mat& corners, float threshold = 0.2) {
-    // minMaxLoc() viene usata per trovare il valore massimo nella mappa dei corner, che viene poi utilizzato per impostare una soglia di cornerness
-    double minVal, maxVal;
-    minMaxLoc(corners, &minVal, &maxVal);
-
-    for (int y = 0; y < corners.rows; y++) {
-        for (int x = 0; x < corners.cols; x++) {
-            // Questa condizione filtra i corner che non sono abbastanza forti da essere considerati rilevanti
-            if (corners.at<float>(y, x) > threshold * maxVal) {
-                // Fa una X sui corner
-                line(img, Point(x - 5, y - 5), Point(x + 5, y + 5), Scalar(0, 255, 0));
-                line(img, Point(x - 5, y + 5), Point(x + 5, y - 5), Scalar(0, 255, 0));
-            }
-        }
-    }
+    return extractKeypoints(corners);
 }
