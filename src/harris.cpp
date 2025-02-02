@@ -115,36 +115,46 @@ Mat nonms(const Mat& corners, float threshold) {
 }
 */
 
+vector<KeyPoint> extractKeypoints(const Mat& corners, float threshold = 0.2) {
+    vector<KeyPoint> keypoints;
+    
+    for (int y = 0; y < corners.rows; y++) {
+        for (int x = 0; x < corners.cols; x++) {
+            if (corners.at<float>(y, x) > 0) {
+                KeyPoint keypoint(Point2f(x, y), 1);
+                keypoints.push_back(keypoint);
+            }
+        }
+    }
+    
+    return keypoints;
+}
+
 /*
 Cit: (en.wikipedia.org)
     Commonly, Harris corner detector algorithm can be divided into five steps:
 */
-Mat harrisCornerDetection(const Mat& imgRGB, int window = 3, double sigma = 2.0, float k = 0.04, float threshold = 0.3) {
+pair<Mat, vector<KeyPoint>> harrisCornerDetection(const Mat& imgRGB, int window = 3, double sigma = 2.0, float k = 0.04, float threshold = 0.2) {
     // 1. Color to grayscale
     Mat img = rgbToGrayscale(imgRGB);
     
     // 2. Spatial derivative calculation
-    pair<Mat, Mat> gradiente = gradient(img);
-    Mat Ix = gradiente.first;
-    Mat Iy = gradiente.second;
+    auto [Ix, Iy] = gradient(img);
     
     // 3. Structure tensor setup
-    tuple<Mat, Mat, Mat> structureTensor = structureTensorSetup(Ix, Iy, window, sigma);
-    Mat SxSx = get<0>(structureTensor);
-    Mat SySy = get<1>(structureTensor);
-    Mat SxSy = get<2>(structureTensor);
+    auto [SxSx, SySy, SxSy] = structureTensorSetup(Ix, Iy, window, sigma);
     
     // 4. Harris response calculation
     Mat cornersNonSuppressed = harrisResponse(SxSx, SySy, SxSy, k);
-    
+
     // 5. Non-maximum suppression
     Mat corners = nonms(cornersNonSuppressed, threshold);
     
-    return corners;
+    return {corners, extractKeypoints(corners)};
 }
 
 // Disegna i corner
-void drawCorners(Mat& img, const Mat& corners, float threshold = 0.3) {
+void drawCorners(Mat& img, const Mat& corners, float threshold = 0.2) {
     // minMaxLoc() viene usata per trovare il valore massimo nella mappa dei corner, che viene poi utilizzato per impostare una soglia di cornerness
     double minVal, maxVal;
     minMaxLoc(corners, &minVal, &maxVal);
