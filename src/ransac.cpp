@@ -18,7 +18,7 @@ vector<DMatch> ransac(const vector<KeyPoint>& keypoints1, const vector<KeyPoint>
 
     // Utilizzo RANSAC implementato da openCV così da esssere sicuramente più efficiente
     vector<uchar> inliersVec;
-    Mat H = findHomography(pts1, pts2, LMEDS, threshold, inliersVec, maxIterations);
+    Mat H = findHomography(pts1, pts2, RANSAC, threshold, inliersVec, maxIterations);
 
     vector<DMatch> inlier;
     for (int i = 0; i < matches.size(); i++) {

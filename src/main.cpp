@@ -9,11 +9,13 @@
 #include "draw_corners.cpp"
 #include "patch_descriptors.cpp"
 #include "ransac.cpp"
+#include "brief.cpp"
+#include "shi_tomasi.cpp"
 
 using namespace cv;
 using namespace std;
 
-Mat img, imgWithCorners, img1, img2, imgMatches;
+Mat img, imgWithCorners, img1, img2, imgMatches, descriptors1, descriptors2;
 vector<KeyPoint> keypoints, keypoints1, keypoints2;
 
 // Parametri di default per Harris ("int" perchè è il tipo che vuole createTrackBar(), li convertirò successivamente)
@@ -22,7 +24,6 @@ int sigma_bar_harris = 34;
 int k_bar_harris = 4;
 int threshold_bar_harris = 100;
 
-// Harris corner detection
 void updateCornersHarris(int, void*) {
     imgWithCorners = img.clone();
 
@@ -80,7 +81,6 @@ int threshold_bar_fast = 50;
 int n_bar_fast = 12;
 int dist_bar_fast = 3;
 
-// Harris corner detection
 void updateCornersFast(int, void*) {
     imgWithCorners = img.clone();
     cvtColor(imgWithCorners, imgWithCorners, COLOR_GRAY2BGR);
@@ -137,7 +137,7 @@ void updateMatch(int, void*) {
     vector<Mat> descriptors1 = computePatchDescriptors(img1, keypoints1, patchSize_bar_patchDescriptor);
     vector<Mat> descriptors2 = computePatchDescriptors(img2, keypoints2, patchSize_bar_patchDescriptor);
     
-    vector<DMatch> matches = matchDescriptors(descriptors1, descriptors2, "lowe", scale_thresh, threshold);
+    vector<DMatch> matches = matchDescriptors(descriptors1, descriptors2, "threshold", scale_thresh, threshold);
     
     vector<DMatch> inlierMatches = ransac(keypoints1, keypoints2, matches, threshold_bar_ransac, maxIterations_bar_ransac);
 
@@ -155,6 +155,55 @@ void do_match(const Mat& img1, const vector<KeyPoint>& keypoints1, const Mat& im
     createTrackbar("Scale Thresh", "Matches", &scale_thresh_bar_matches, 100, updateMatch);
     createTrackbar("Threshold", "Matches", &threshold_bar_matches, 10000, updateMatch);
     
+    waitKey(0);
+}
+
+// Parametri di default per Shi-Tomasi
+int threshold_bar_shi_tomasi = 10000;
+int window_size_bar_shi_tomasi = 3;
+
+void updateCornersShiTomasi(int, void*) {
+    imgWithCorners = img.clone();
+
+    double threshold = threshold_bar_shi_tomasi / 10.0;
+
+    keypoints = shiTomasiCornerDetection(img, threshold, window_size_bar_shi_tomasi);
+
+    drawCorners(imgWithCorners, keypoints);
+
+    // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
+    /*Mat resizedImg;
+    resize(imgWithCorners, resizedImg, Size(imgWithCorners.cols / 2, imgWithCorners.rows / 2));
+
+    imshow("Harris Corner Detection", resizedImg);*/
+
+    imshow("Shi-Tomasi Corner Detection", imgWithCorners);
+}
+
+
+// Funzione per caricare l'immagine e applicare Shi-Tomasi
+void do_shi_tomasi(const string& imgPath) {
+    img = imread(imgPath);
+
+    if (img.empty()) {
+        cout << "Errore nel caricare l'immagine!" << endl;
+        return;
+    }
+
+    updateCornersShiTomasi(0, 0);
+
+    // Estraggo il nome del file (senza estensione)
+    size_t start = imgPath.find_last_of("/\\") + 1;
+    size_t end = imgPath.find_last_of(".");
+    string filename = imgPath.substr(start, end - start);
+    int imgIndex = stoi(filename);
+    string savePath = "output/" + to_string(imgIndex) + "_corners_shi_tomasi.jpg";
+    imwrite(savePath, imgWithCorners);
+
+    // Crea le trackbar per cambiare i parametri in tempo reale
+    createTrackbar("Threshold", "Shi-Tomasi Corner Detection", &threshold_bar_shi_tomasi, 100000, updateCornersShiTomasi);
+    createTrackbar("Window Size", "Shi-Tomasi Corner Detection", &window_size_bar_shi_tomasi, 20, updateCornersShiTomasi);
+
     waitKey(0);
 }
 
@@ -178,6 +227,12 @@ int main(int argc, char** argv) {
         const string& imgPath2="immagini/8.jpg";
         do_fast(imgPath2);
     }
+    else if (command == "shitomasi") {
+        const string& imgPath1="immagini/7.jpg";
+        do_shi_tomasi(imgPath1);
+        const string& imgPath2="immagini/8.jpg";
+        do_shi_tomasi(imgPath2);
+    }
     else if (command == "match") {
         if (argc < 3) {
             cout << "Uso: ./progetto <match harris | fast | ...>" << endl;
@@ -186,31 +241,52 @@ int main(int argc, char** argv) {
 
         string type_kp = argv[2];
 
-        if (type_kp == "harris") { 
-            const string& imgPath1 = "immagini/7.jpg";
-            do_harris(imgPath1);
-            img1 = imread(imgPath1);
-            keypoints1 = keypoints;
+        if (type_kp == "sift") { 
+            img1 = imread("immagini/16.jpg");
+            resize(img1, img1, Size(img1.cols / 4, img1.rows / 4));
 
-            const string& imgPath2 = "immagini/8.jpg";
-            do_harris(imgPath2);
-            img2 = imread(imgPath2);
-            keypoints2 = keypoints;
+            img2 = imread("immagini/15.jpg");
+            resize(img2, img2, Size(img2.cols / 4, img2.rows / 4));
 
-            do_match(img1, keypoints1, img2, keypoints2);
+            Ptr<SIFT> sift = SIFT::create();
+            Mat descriptors1, descriptors2;
+            sift->detectAndCompute(img1, noArray(), keypoints1, descriptors1);
+            sift->detectAndCompute(img2, noArray(), keypoints2, descriptors2);
+
+            generatePattern(64);
+            descriptors1 = computeBRIEF(img1, keypoints1);
+            descriptors2 = computeBRIEF(img2, keypoints2);
+            vector<DMatch> matches = matchBRIEF(descriptors1, descriptors2);
+
+            matches = ransac(keypoints1, keypoints2, matches);
+
+            drawMatches(img1, keypoints1, img2, keypoints2, matches, imgMatches);
+
+            imshow("SIFT Matches", imgMatches);
+            waitKey(0);
         }
-        else if (type_kp == "fast") {
-            const string& imgPath1="immagini/0.jpg";
-            do_fast(imgPath1);
-            img1=imread(imgPath1);
-            keypoints1=keypoints;
+        else if (type_kp == "orb") {
+            img1=imread("immagini/14.jpg");
+            resize(img1, img1, Size(img1.cols / 4, img1.rows / 4));
 
-            const string& imgPath2="immagini/1.jpg";
-            do_fast(imgPath2);
-            img2=imread(imgPath2);
-            keypoints2=keypoints;
+            img2=imread("immagini/15.jpg");
+            resize(img2, img2, Size(img2.cols / 4, img2.rows / 4));
 
-            do_match(img1, keypoints1, img2, keypoints2);
+            Ptr<FastFeatureDetector> fast = FastFeatureDetector::create(100);
+            fast->detect(img1, keypoints1);
+            fast->detect(img2, keypoints2);
+
+            generatePattern(64);
+            descriptors1 = computeBRIEF(img1, keypoints1);
+            descriptors2 = computeBRIEF(img2, keypoints2);
+            vector<DMatch> matches = matchBRIEF(descriptors1, descriptors2);
+
+            matches = ransac(keypoints1, keypoints2, matches);
+
+            drawMatches(img1, keypoints1, img2, keypoints2, matches, imgMatches);
+
+            imshow("Matching ORB", imgMatches);
+            waitKey(0);
         }
         else {
             cout << "Uso: ./progetto <match harris | fast | ...>" << endl;
