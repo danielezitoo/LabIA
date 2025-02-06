@@ -47,7 +47,7 @@ tuple<Mat, Mat, Mat> structureTensorSetup(const Mat& Ix, const Mat& Iy, int wind
     return {SxSx, SySy, SxSy};
 }
 
-Mat harrisResponse(const Mat& SxSx, const Mat& SySy, const Mat& SxSy, float k) {
+Mat harrisResponse(const Mat& SxSx, const Mat& SySy, const Mat& SxSy) {
     Mat corners = Mat::zeros(SxSx.size(), CV_32F);
     
     for (int y = 0; y < SxSx.rows; y++) {
@@ -142,7 +142,7 @@ vector<KeyPoint> extractKeypoints(const Mat& corners, float threshold = 0.2) {
 Cit: (en.wikipedia.org)
     Commonly, Harris corner detector algorithm can be divided into five steps:
 */
-vector<KeyPoint> harrisCornerDetection(const Mat& imgRGB, int window = 3, double sigma = 2.0, float k = 0.04, float threshold = 0.2) {
+vector<KeyPoint> harrisCornerDetection(const Mat& imgRGB, int window = 3, double sigma = 2.0, float threshold = 0.2) {
     // 1. Color to grayscale
     Mat img = rgbToGrayscale(imgRGB);
     
@@ -153,7 +153,7 @@ vector<KeyPoint> harrisCornerDetection(const Mat& imgRGB, int window = 3, double
     auto [SxSx, SySy, SxSy] = structureTensorSetup(Ix, Iy, window, sigma);
     
     // 4. Harris response calculation
-    Mat cornersNonSuppressed = harrisResponse(SxSx, SySy, SxSy, k);
+    Mat cornersNonSuppressed = harrisResponse(SxSx, SySy, SxSy);
 
     // 5. Non-maximum suppression
     Mat corners = nonms(cornersNonSuppressed, threshold);

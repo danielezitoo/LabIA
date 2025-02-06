@@ -6,24 +6,24 @@
 
 #include "harris.cpp"
 #include "fast.cpp"
-#include "draw_corners.cpp"
-#include "patch_descriptors.cpp"
-#include "ransac.cpp"
-#include "brief.cpp"
 #include "shi_tomasi.cpp"
+#include "utils.cpp"
+#include "patch_descriptors.cpp"
+#include "brief.cpp"
+#include "hog.cpp"
 
 using namespace cv;
 using namespace std;
 
-Mat img, imgWithCorners, img1, img2, imgMatches, descriptors1, descriptors2;
+Mat img, imgWithCorners, img1, img2, imgMatches, descriptors1, descriptors2, imgCopy;
 vector<KeyPoint> keypoints, keypoints1, keypoints2;
 
 // Parametri di default per Harris ("int" perchè è il tipo che vuole createTrackBar(), li convertirò successivamente)
 int window_harris = 20;
 int sigma_bar_harris = 34;
-int k_bar_harris = 4;
 int threshold_bar_harris = 100;
 
+// Funzione per aggiornare la rilevazione dei corner Harris
 void updateCornersHarris(int, void*) {
     imgWithCorners = img.clone();
 
@@ -34,21 +34,18 @@ void updateCornersHarris(int, void*) {
         window_harris = 3;
     }
     double sigma = sigma_bar_harris / 10.0;
-    float k = 0.04f + (k_bar_harris / 100.0f) * (0.06f - 0.04f);
     float threshold = threshold_bar_harris / 10.0f;
 
-    keypoints = harrisCornerDetection(img, window_harris, sigma, k, threshold);
-
+    keypoints = harrisCornerDetection(img, window_harris, sigma, threshold);
     drawCorners(imgWithCorners, keypoints);
 
+    namedWindow("Harris Corner Detection", WINDOW_NORMAL);
     // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
-    /*Mat resizedImg;
-    resize(imgWithCorners, resizedImg, Size(imgWithCorners.cols / 2, imgWithCorners.rows / 2));
-
-    imshow("Harris Corner Detection", resizedImg);*/
+    resizeWindow("Harris Corner Detection", 1300, 750);
     imshow("Harris Corner Detection", imgWithCorners);
 }
 
+// Funzione per eseguire Harris sull'immagine ritagliata
 void do_harris(const string& imgPath) {
     img = imread(imgPath);
 
@@ -59,18 +56,12 @@ void do_harris(const string& imgPath) {
 
     updateCornersHarris(0, 0);
 
-    // Estraggo il nome del file (senza estensione)
-    size_t start = imgPath.find_last_of("/\\") + 1;
-    size_t end = imgPath.find_last_of(".");
-    string filename = imgPath.substr(start, end - start);
-    int imgIndex = stoi(filename);
-    string savePath = "output/" + to_string(imgIndex) + "_corners_harris.jpg";
-    imwrite(savePath, imgWithCorners);
+    // Salva l'immagine con i corner rilevati
+    saveImageKP(imgWithCorners, imgPath, "corners_harris");
 
     // Crea le trackbar per cambiare i parametri in tempo reale
     createTrackbar("Window Size", "Harris Corner Detection", &window_harris, 20, updateCornersHarris);
     createTrackbar("Sigma", "Harris Corner Detection", &sigma_bar_harris, 200, updateCornersHarris);
-    // createTrackbar("K", "Harris Corner Detection", &k_bar_harris, 100, updateCornersHarris);
     createTrackbar("Threshold", "Harris Corner Detection", &threshold_bar_harris, 100, updateCornersHarris);
 
     waitKey(0);
@@ -89,11 +80,9 @@ void updateCornersFast(int, void*) {
 
     drawCorners(imgWithCorners, keypoints);
 
+    namedWindow("FAST Corner Detection", WINDOW_NORMAL);
     // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
-    /*Mat resizedImg;
-    resize(imgWithCorners, resizedImg, Size(imgWithCorners.cols / 2, imgWithCorners.rows / 2));
-
-    imshow("FAST Corner Detection", resizedImg);*/
+    resizeWindow("FAST Corner Detection", 1300, 750);
     imshow("FAST Corner Detection", imgWithCorners);
 }
 
@@ -107,13 +96,7 @@ void do_fast(const string& imgPath) {
 
     updateCornersFast(0, 0);
 
-    // Estraggo il nome del file (senza estensione)
-    size_t start = imgPath.find_last_of("/\\") + 1;
-    size_t end = imgPath.find_last_of(".");
-    string filename = imgPath.substr(start, end - start);
-    int imgIndex = stoi(filename);
-    string savePath = "output/" + to_string(imgIndex) + "_corners_fast.jpg";
-    imwrite(savePath, imgWithCorners);
+    saveImageKP(imgWithCorners, imgPath, "_corners_fast");
 
     // Crea le trackbar per cambiare i parametri in tempo reale
     createTrackbar("Threshold", "FAST Corner Detection", &threshold_bar_fast, 255, updateCornersFast);
@@ -123,42 +106,6 @@ void do_fast(const string& imgPath) {
     waitKey(0);
 }
 
-// Parametri di default per match e Ransac
-int threshold_bar_ransac = 5;
-int maxIterations_bar_ransac = 1000;
-int patchSize_bar_patchDescriptor = 32;
-int scale_thresh_bar_matches = 75;
-int threshold_bar_matches = 3000;
-
-void updateMatch(int, void*) {
-    float scale_thresh = scale_thresh_bar_matches / 100.0f;
-    float threshold = static_cast<float>(threshold_bar_matches);
-    
-    vector<Mat> descriptors1 = computePatchDescriptors(img1, keypoints1, patchSize_bar_patchDescriptor);
-    vector<Mat> descriptors2 = computePatchDescriptors(img2, keypoints2, patchSize_bar_patchDescriptor);
-    
-    vector<DMatch> matches = matchDescriptors(descriptors1, descriptors2, "threshold", scale_thresh, threshold);
-    
-    vector<DMatch> inlierMatches = ransac(keypoints1, keypoints2, matches, threshold_bar_ransac, maxIterations_bar_ransac);
-
-    drawMatches(img1, keypoints1, img2, keypoints2, inlierMatches, imgMatches);
-    imshow("Matches", imgMatches);
-}
-
-void do_match(const Mat& img1, const vector<KeyPoint>& keypoints1, const Mat& img2, const vector<KeyPoint>& keypoints2) {
-    updateMatch(0, 0);
-
-    // Crea le trackbar per cambiare i parametri in tempo reale
-    createTrackbar("Patch Size", "Matches", &patchSize_bar_patchDescriptor, 64, updateMatch);
-    createTrackbar("RANSAC Threshold", "Matches", &threshold_bar_ransac, 20, updateMatch);
-    createTrackbar("Max Iterations", "Matches", &maxIterations_bar_ransac, 10000, updateMatch);
-    createTrackbar("Scale Thresh", "Matches", &scale_thresh_bar_matches, 100, updateMatch);
-    createTrackbar("Threshold", "Matches", &threshold_bar_matches, 10000, updateMatch);
-    
-    waitKey(0);
-}
-
-// Parametri di default per Shi-Tomasi
 int threshold_bar_shi_tomasi = 10000;
 int window_size_bar_shi_tomasi = 3;
 
@@ -171,17 +118,12 @@ void updateCornersShiTomasi(int, void*) {
 
     drawCorners(imgWithCorners, keypoints);
 
+    namedWindow("Shi-Tomasi Corner Detection", WINDOW_NORMAL);
     // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
-    /*Mat resizedImg;
-    resize(imgWithCorners, resizedImg, Size(imgWithCorners.cols / 2, imgWithCorners.rows / 2));
-
-    imshow("Harris Corner Detection", resizedImg);*/
-
+    resizeWindow("Shi-Tomasi Corner Detection", 1300, 750);
     imshow("Shi-Tomasi Corner Detection", imgWithCorners);
 }
 
-
-// Funzione per caricare l'immagine e applicare Shi-Tomasi
 void do_shi_tomasi(const string& imgPath) {
     img = imread(imgPath);
 
@@ -192,17 +134,110 @@ void do_shi_tomasi(const string& imgPath) {
 
     updateCornersShiTomasi(0, 0);
 
-    // Estraggo il nome del file (senza estensione)
-    size_t start = imgPath.find_last_of("/\\") + 1;
-    size_t end = imgPath.find_last_of(".");
-    string filename = imgPath.substr(start, end - start);
-    int imgIndex = stoi(filename);
-    string savePath = "output/" + to_string(imgIndex) + "_corners_shi_tomasi.jpg";
-    imwrite(savePath, imgWithCorners);
+    saveImageKP(imgWithCorners, imgPath, "_corners_shi_tomasi");
 
     // Crea le trackbar per cambiare i parametri in tempo reale
     createTrackbar("Threshold", "Shi-Tomasi Corner Detection", &threshold_bar_shi_tomasi, 100000, updateCornersShiTomasi);
     createTrackbar("Window Size", "Shi-Tomasi Corner Detection", &window_size_bar_shi_tomasi, 20, updateCornersShiTomasi);
+
+    waitKey(0);
+}
+
+// Parametri di default per SIFT
+int threshold_bar_ransac_sift = 3;
+int maxIterations_bar_ransac_sift = 20000;
+
+void updateSIFT(int, void*) {
+    Ptr<SIFT> sift = SIFT::create();
+    sift->detect(img1, keypoints1);
+    sift->detect(img2, keypoints2);
+
+    descriptors1 = computeHOG(img1, keypoints1);
+    descriptors2 = computeHOG(img2, keypoints2);
+
+    vector<DMatch> matches = matchHOG(descriptors1, descriptors2);
+
+    matches = ransac(keypoints1, keypoints2, matches, threshold_bar_ransac_sift, maxIterations_bar_ransac_sift);
+
+    drawMatches(img1, keypoints1, img2, keypoints2, matches, imgMatches);
+
+    namedWindow("SIFT Matches", WINDOW_NORMAL);
+    // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
+    resizeWindow("SIFT Matches", 1300, 750);
+    imshow("SIFT Matches", imgMatches);
+}
+
+void do_sift(const string& imgPath1, const string& imgPath2) {
+    img1 = imread(imgPath1);
+    img2 = imread(imgPath2);
+
+    // Ridimensiono più per diminuire la mole di calcolo che per la dimensione dell'immagine
+    resize(img1, img1, Size(img1.cols / 3, img1.rows / 3));
+    resize(img2, img2, Size(img2.cols / 3, img2.rows / 3));
+
+    if (img1.empty() || img2.empty()) {
+        cout << "Errore nel caricare le immagini!" << endl;
+        return;
+    }
+
+    updateSIFT(0, 0);
+
+    saveImageM(imgMatches, imgPath1, imgPath2, "_match_sift");
+
+    createTrackbar("Threshold RANSAC", "SIFT Matches", &threshold_bar_ransac_sift, 20, updateSIFT);
+    createTrackbar("Max Iter RANSAC", "SIFT Matches", &maxIterations_bar_ransac_sift, 20000, updateSIFT);
+
+    waitKey(0);
+}
+
+// Parametri di default per ORB
+int threshold_fast_bar_orb = 100;
+int patch_size_bar_orb = 64;
+int n_bits_bar_orb = 256;
+int threshold_bar_ransac_orb = 3;
+int maxIterations_bar_ransac_orb = 5000;
+
+void updateORB(int, void*) {
+    Ptr<FastFeatureDetector> fast = FastFeatureDetector::create(threshold_fast_bar_orb);
+    fast->detect(img1, keypoints1);
+    fast->detect(img2, keypoints2);
+
+    descriptors1 = computeBRIEF(img1, keypoints1, patch_size_bar_orb, n_bits_bar_orb);
+    descriptors2 = computeBRIEF(img2, keypoints2, patch_size_bar_orb, n_bits_bar_orb);
+
+    vector<DMatch> matches = matchBRIEF(descriptors1, descriptors2);
+
+    matches = ransac(keypoints1, keypoints2, matches, threshold_bar_ransac_orb, maxIterations_bar_ransac_orb);
+
+    drawMatches(img1, keypoints1, img2, keypoints2, matches, imgMatches);
+
+    namedWindow("Matching ORB", WINDOW_NORMAL);
+    // Cerco di non far creare una schermata troppo grande per farlo entrare nello schermo
+    resizeWindow("Matching ORB", 1300, 750);
+    imshow("Matching ORB", imgMatches);
+}
+
+void do_orb(const string& imgPath1, const string& imgPath2) {
+    img1 = imread(imgPath1);
+    img2 = imread(imgPath2);
+
+    resize(img1, img1, Size(img1.cols / 4, img1.rows / 4));
+    resize(img2, img2, Size(img2.cols / 4, img2.rows / 4));
+
+    if (img1.empty() || img2.empty()) {
+        cout << "Errore nel caricare le immagini!" << endl;
+        return;
+    }
+
+    updateORB(0, 0);
+
+    saveImageM(imgMatches, imgPath1, imgPath2, "_match_orb");
+
+    createTrackbar("Threshold FAST", "Matching ORB", &threshold_fast_bar_orb, 150, updateORB);
+    createTrackbar("Patch Size BRIEF", "Matching ORB", &patch_size_bar_orb, 128, updateORB);
+    createTrackbar("Num Bits BRIEF", "Matching ORB", &n_bits_bar_orb, 256, updateORB);
+    createTrackbar("Threshold RANSAC", "Matching ORB", &threshold_bar_ransac_orb, 20, updateORB);
+    createTrackbar("Max Iter RANSAC", "Matching ORB", &maxIterations_bar_ransac_orb, 20000, updateORB);
 
     waitKey(0);
 }
@@ -216,7 +251,7 @@ int main(int argc, char** argv) {
     string command = argv[1];
 
     if (command == "harris") {
-        const string& imgPath1="immagini/7.jpg";
+        const string& imgPath1="immagini/15.jpg";
         do_harris(imgPath1);
         const string& imgPath2="immagini/8.jpg";
         do_harris(imgPath2);
@@ -242,51 +277,14 @@ int main(int argc, char** argv) {
         string type_kp = argv[2];
 
         if (type_kp == "sift") { 
-            img1 = imread("immagini/16.jpg");
-            resize(img1, img1, Size(img1.cols / 4, img1.rows / 4));
-
-            img2 = imread("immagini/15.jpg");
-            resize(img2, img2, Size(img2.cols / 4, img2.rows / 4));
-
-            Ptr<SIFT> sift = SIFT::create();
-            Mat descriptors1, descriptors2;
-            sift->detectAndCompute(img1, noArray(), keypoints1, descriptors1);
-            sift->detectAndCompute(img2, noArray(), keypoints2, descriptors2);
-
-            generatePattern(64);
-            descriptors1 = computeBRIEF(img1, keypoints1);
-            descriptors2 = computeBRIEF(img2, keypoints2);
-            vector<DMatch> matches = matchBRIEF(descriptors1, descriptors2);
-
-            matches = ransac(keypoints1, keypoints2, matches);
-
-            drawMatches(img1, keypoints1, img2, keypoints2, matches, imgMatches);
-
-            imshow("SIFT Matches", imgMatches);
-            waitKey(0);
+            const string& imgPath1="immagini/0.jpg";
+            const string& imgPath2="immagini/1.jpg";
+            do_sift(imgPath1, imgPath2);
         }
         else if (type_kp == "orb") {
-            img1=imread("immagini/14.jpg");
-            resize(img1, img1, Size(img1.cols / 4, img1.rows / 4));
-
-            img2=imread("immagini/15.jpg");
-            resize(img2, img2, Size(img2.cols / 4, img2.rows / 4));
-
-            Ptr<FastFeatureDetector> fast = FastFeatureDetector::create(100);
-            fast->detect(img1, keypoints1);
-            fast->detect(img2, keypoints2);
-
-            generatePattern(64);
-            descriptors1 = computeBRIEF(img1, keypoints1);
-            descriptors2 = computeBRIEF(img2, keypoints2);
-            vector<DMatch> matches = matchBRIEF(descriptors1, descriptors2);
-
-            matches = ransac(keypoints1, keypoints2, matches);
-
-            drawMatches(img1, keypoints1, img2, keypoints2, matches, imgMatches);
-
-            imshow("Matching ORB", imgMatches);
-            waitKey(0);
+            const string& imgPath1="immagini/0.jpg";
+            const string& imgPath2="immagini/1.jpg";
+            do_orb(imgPath1, imgPath2);
         }
         else {
             cout << "Uso: ./progetto <match harris | fast | ...>" << endl;

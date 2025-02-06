@@ -112,3 +112,42 @@ vector<DMatch> matchDescriptors(const vector<Mat>& descriptors1, const vector<Ma
 
     return matches;
 }
+
+/*
+NEL MAIN: (TOLTO POICHÈ NON FUNZIONAVA)
+
+// Parametri di default per match e Ransac
+/*
+int threshold_bar_ransac = 5;
+int maxIterations_bar_ransac = 1000;
+int patchSize_bar_patchDescriptor = 32;
+int scale_thresh_bar_matches = 75;
+int threshold_bar_matches = 3000;
+
+void updateMatch(int, void*) {
+    float scale_thresh = scale_thresh_bar_matches / 100.0f;
+    float threshold = static_cast<float>(threshold_bar_matches);
+    
+    vector<Mat> descriptors1 = computePatchDescriptors(img1, keypoints1, patchSize_bar_patchDescriptor);
+    vector<Mat> descriptors2 = computePatchDescriptors(img2, keypoints2, patchSize_bar_patchDescriptor);
+    
+    vector<DMatch> matches = matchDescriptors(descriptors1, descriptors2, "threshold", scale_thresh, threshold);
+    
+    vector<DMatch> inlierMatches = ransac(keypoints1, keypoints2, matches, threshold_bar_ransac, maxIterations_bar_ransac);
+
+    drawMatches(img1, keypoints1, img2, keypoints2, inlierMatches, imgMatches);
+    imshow("Matches", imgMatches);
+}
+
+void do_match(const Mat& img1, const vector<KeyPoint>& keypoints1, const Mat& img2, const vector<KeyPoint>& keypoints2) {
+    updateMatch(0, 0);
+
+    // Crea le trackbar per cambiare i parametri in tempo reale
+    createTrackbar("Patch Size", "Matches", &patchSize_bar_patchDescriptor, 64, updateMatch);
+    createTrackbar("RANSAC Threshold", "Matches", &threshold_bar_ransac, 20, updateMatch);
+    createTrackbar("Max Iterations", "Matches", &maxIterations_bar_ransac, 10000, updateMatch);
+    createTrackbar("Scale Thresh", "Matches", &scale_thresh_bar_matches, 100, updateMatch);
+    createTrackbar("Threshold", "Matches", &threshold_bar_matches, 10000, updateMatch);
+    
+    waitKey(0);
+}*/
