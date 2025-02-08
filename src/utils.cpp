@@ -3,8 +3,27 @@
 #include <opencv2/calib3d.hpp>
 #include <vector>
 
+#include "globals.h"
+
 using namespace cv;
 using namespace std;
+
+// Funzione per controllare e ridimensionare l'immagine se è troppo grande o se è vuota
+bool checkImage(Mat& img, const string& imgPath) {
+    if (img.empty()) {
+        cout << "Errore nel caricare l'immagine!" << endl;
+        return false;
+    }
+
+    while (img.cols > MAX_SIZE || img.rows > MAX_SIZE) {
+        resize(img, img, Size(img.cols / 2, img.rows / 2));
+    }
+    
+    cout << "Immagine troppo grande!\nImmagine ridotta a: " << img.cols << "x" << img.rows << endl;
+
+    return true;
+}
+
 
 // Fa una X sui corners
 void drawCorners(Mat &img, const vector<KeyPoint> &keypoints) {
@@ -16,9 +35,8 @@ void drawCorners(Mat &img, const vector<KeyPoint> &keypoints) {
     }
 }
 
-/*
-RANSAC stima un modello robusto iterando tra selezione casuale di punti e verifica degli inlier, scartando gli outlier dovuti a rumore o mismatch.
-*/
+
+// RANSAC stima un modello robusto iterando tra selezione casuale di punti e verifica degli inlier, scartando gli outlier dovuti a rumore o mismatch.
 vector<DMatch> ransac(const vector<KeyPoint>& keypoints1, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches, double threshold = 5.0, int maxIterations = 10000) {
     vector<Point2f> pts1, pts2;
     for (int i = 0; i < matches.size(); i++) {
@@ -27,12 +45,12 @@ vector<DMatch> ransac(const vector<KeyPoint>& keypoints1, const vector<KeyPoint>
     }
 
     // Utilizzo RANSAC implementato da openCV così da esssere sicuramente più efficiente
-    vector<uchar> inliersVec;
-    Mat H = findHomography(pts1, pts2, RANSAC, threshold, inliersVec, maxIterations);
+    vector<uchar> inliers;
+    Mat H = findHomography(pts1, pts2, RANSAC, threshold, inliers, maxIterations);
 
     vector<DMatch> inlier;
     for (int i = 0; i < matches.size(); i++) {
-        if (inliersVec[i]) {
+        if (inliers[i]) {
             inlier.push_back(matches[i]);
         }
     }
