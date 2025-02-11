@@ -1,12 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
-#include <vector>
-#include <cstdlib>
-#include <cmath>
-#include <ctime>
-
-using namespace cv;
-using namespace std;
+#include "globals.h"
 
 Mat extractPatchDescriptor(const Mat& img, const KeyPoint& kp, int patchSize = 64) {
     int half = patchSize / 2;

@@ -1,10 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <vector>
-#include <bitset>
-#include <random>
-
-using namespace cv;
-using namespace std;
+#include "globals.h"
 
 int n_bits;
 vector<Point2i> pattern;
@@ -58,7 +52,7 @@ Mat computeBRIEF(const Mat &img, const vector<KeyPoint> &keypoints, int patch_si
             }
         }
 
-        // Dopo aver costruito il bitset, lo converto in un vettore di byt poichè
+        // Dopo aver costruito il bitset, lo converto in un vettore di byte poichè
         // memorizzare ogni bit singolarmente sarebbe inefficiente dal punto di vista dello spazio.
         for (int j = 0; j < n_bits / 8; j++) {
             uchar byte = 0;
@@ -71,9 +65,8 @@ Mat computeBRIEF(const Mat &img, const vector<KeyPoint> &keypoints, int patch_si
     return descriptors;
 }
 
-/*
-Il matching avviene confrontando i descrittori con la distanza di Hamming.
-*/
+
+// Il matching avviene confrontando i descrittori con la distanza di Hamming.
 vector<DMatch> matchBRIEF(const Mat &descriptor1, const Mat &descriptor2) {
     vector<DMatch> matches;
 
@@ -108,6 +101,13 @@ vector<DMatch> matchBRIEF(const Mat &descriptor1, const Mat &descriptor2) {
             matches.emplace_back(i, index, best_dist);
         }
     }
-
     return matches;
 }
+
+/*
+✅ Estremamente veloce (usa solo confronti di intensità).
+✅ Vettori descrittori compatti (molto più piccoli rispetto a HOG o SIFT).
+✅ Robusto al rumore e alla variazione di contrasto (grazie alla differenza di intensità tra coppie).
+❌ Non invariante alla rotazione (se l'oggetto ruota, il descrittore cambia).
+❌ Meno distintivo di HOG o SIFT.
+*/

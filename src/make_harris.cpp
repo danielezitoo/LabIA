@@ -14,7 +14,18 @@ void updateCornersHarris(int, void*) {
     float threshold = threshold_bar_harris / 10.0f;
     double sigma = sigma_bar_harris / 10.0;
 
+    int64 start = getTickCount();
+
     keypoints = harrisCornerDetection(img, window_harris, sigma, threshold);
+
+    // Stampa il numero di corner trovati
+    cout << "Numero di corner rilevati: " << keypoints.size() << endl;
+
+    // Misura prestazioni
+    int64 end = getTickCount();
+    double tEsec = (end - start) / getTickFrequency();
+    cout << "Tempo di esecuzione per Harris Corner Detection: " << tEsec << " secondi\n" << endl;
+
     drawCorners(imgWithCorners, keypoints);
 
     namedWindow("Harris Corner Detection", WINDOW_NORMAL);
@@ -37,9 +48,9 @@ void do_harris(const string& imgPath) {
     saveImageKP(imgWithCorners, imgPath, "corners_harris");
 
     // Crea le trackbar per cambiare i parametri in tempo reale
-    createTrackbar("Window Size", "Harris Corner Detection", &window_harris, 20, updateCornersHarris);
-    createTrackbar("Sigma", "Harris Corner Detection", &sigma_bar_harris, 200, updateCornersHarris);
-    createTrackbar("Threshold", "Harris Corner Detection", &threshold_bar_harris, 100, updateCornersHarris);
+    createTrackbar("Window Size", "Harris Corner Detection", &window_harris, 30, updateCornersHarris);
+    createTrackbar("Sigma", "Harris Corner Detection", &sigma_bar_harris, 400, updateCornersHarris);
+    createTrackbar("Threshold", "Harris Corner Detection", &threshold_bar_harris, 250, updateCornersHarris);
 
     waitKey(0);
 }

@@ -1,12 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
-#include <opencv2/calib3d.hpp>
-#include <vector>
-
 #include "globals.h"
-
-using namespace cv;
-using namespace std;
 
 // Funzione per controllare e ridimensionare l'immagine se è troppo grande o se è vuota
 bool checkImage(Mat& img, const string& imgPath) {
@@ -17,9 +9,8 @@ bool checkImage(Mat& img, const string& imgPath) {
 
     while (img.cols > MAX_SIZE || img.rows > MAX_SIZE) {
         resize(img, img, Size(img.cols / 2, img.rows / 2));
+        cout << "Immagine troppo grande!\nImmagine ridotta a: " << img.cols << "x" << img.rows << "\n" << endl;
     }
-    
-    cout << "Immagine troppo grande!\nImmagine ridotta a: " << img.cols << "x" << img.rows << endl;
 
     return true;
 }
@@ -37,7 +28,7 @@ void drawCorners(Mat &img, const vector<KeyPoint> &keypoints) {
 
 
 // RANSAC stima un modello robusto iterando tra selezione casuale di punti e verifica degli inlier, scartando gli outlier dovuti a rumore o mismatch.
-vector<DMatch> ransac(const vector<KeyPoint>& keypoints1, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches, double threshold = 5.0, int maxIterations = 10000) {
+vector<DMatch> ransac(const vector<KeyPoint>& keypoints1, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches, double threshold = 10.0, int maxIterations = 20000) {
     vector<Point2f> pts1, pts2;
     for (int i = 0; i < matches.size(); i++) {
         pts1.push_back(keypoints1[matches[i].queryIdx].pt);
@@ -83,5 +74,22 @@ void saveImageM(const Mat &img, const string &imgPath1, const string &imgPath2, 
     int imgIndex2 = stoi(filename2);
 
     string savePath = "output/" + filename1 + "_" + filename2 + command + ".jpg";
+    imwrite(savePath, img);
+}
+
+// Salva immagini per Merging
+void saveImageP(const Mat &img, const string &imgPath1, const string &imgPath2, const string &command) {
+    // Estrazione del nome del file senza estensione
+    int start = imgPath1.find_last_of("/\\") + 1;
+    int end = imgPath1.find_last_of(".");
+    string filename1 = imgPath1.substr(start, end - start);
+
+    // Estrazione del nome del file senza estensione
+    start = imgPath2.find_last_of("/\\") + 1;
+    end = imgPath2.find_last_of(".");
+    string filename2 = imgPath2.substr(start, end - start);
+    int imgIndex2 = stoi(filename2);
+
+    string savePath = "output/merged/" + filename1 + "_" + filename2 + command + ".jpg";
     imwrite(savePath, img);
 }

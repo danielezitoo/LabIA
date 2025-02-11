@@ -1,9 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <vector>
-#include <iostream>
-
-using namespace cv;
-using namespace std;
+#include "globals.h"
 
 // Funzione per calcolare i gradienti
 pair<Mat, Mat> gradients(const Mat& img) {
@@ -79,7 +74,6 @@ vector<KeyPoint> shiTomasiCornerDetection(const Mat& img, double threshold = 0.0
     
     auto [Ix, Iy] = gradients(imgGray);
 
-    // Mappa per tenere traccia dei corner rilevati
     Mat responseMap = Mat::zeros(imgGray.size(), CV_64F);
     
     for (int y = window / 2; y < imgGray.rows - window / 2; y++) {
@@ -90,7 +84,7 @@ vector<KeyPoint> shiTomasiCornerDetection(const Mat& img, double threshold = 0.0
             double lambda1 = lambda[0];
             double lambda2 = lambda[1];
 
-            // Scalo la tresh anzichè settare la threshold molto alta
+            // Scalo la tresh per non dover settare la threshold molto alta
             int scale_thresh = 100;
 
             if (lambda1 > threshold * scale_thresh && lambda2 > threshold * scale_thresh) {
@@ -101,6 +95,7 @@ vector<KeyPoint> shiTomasiCornerDetection(const Mat& img, double threshold = 0.0
 
     Mat suppressedCorners = nonMaximumSuppression(responseMap, window);
 
+    // Estraggo i keypoints
     vector<KeyPoint> keypoints;
 
     for (int y = 0; y < suppressedCorners.rows; y++) {
@@ -113,3 +108,10 @@ vector<KeyPoint> shiTomasiCornerDetection(const Mat& img, double threshold = 0.0
 
     return keypoints;
 }
+
+/*
+✅ Migliore precisione rispetto a Harris: l'uso degli autovalori riduce i falsi positivi.
+✅ Meno sensibile al parametro k: evita problemi di scelta del parametro arbitrario.
+❌ Computazionalmente costoso: calcolare gli autovalori è più oneroso di Harris.
+❌ Sensibile alla scala.
+*/

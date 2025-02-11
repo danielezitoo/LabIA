@@ -1,8 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <vector>
-
-using namespace cv;
-using namespace std;
+#include "globals.h"
 
 /*
 Cit: (en.wikipedia.org)
@@ -32,7 +28,7 @@ Cit: (en.wikipedia.org)
 
     To account for changes in illumination and contrast, the gradient strengths must be locally normalized, which requires grouping the cells together.
     The HOG descriptor is then the concatenated vector of the components of the normalized cell histograms from all of the block regions.
-    Two main block geometries exist: rectangular R-HOG blocks and circular C-HOG blocks. R-HOG (che ho utilizzato) blocks are generally square grids
+    Two main block geometries exist: rectangular R-HOG blocks and circular C-HOG blocks. R-HOG (utilizzato da me) blocks are generally square grids
     The optimal parameters were found to be four 8x8 pixels cells per block (16x16 pixels per block) with 9 histogram channels.
 */
 vector<float> computeHistogram(const Mat &magBlock, const Mat &angleBlock, int nBins, int cellSize, int blockSize) {
@@ -135,3 +131,11 @@ vector<DMatch> matchHOG(const Mat &descriptor1, const Mat &descriptor2) {
     
     return matches;
 }
+
+/*
+✅ Robusto a variazioni di illuminazione e contrasto (grazie alla normalizzazione).
+✅ Descrive bene bordi e contorni → molto utile per il riconoscimento di oggetti.
+✅ Invariante a piccole traslazioni e rotazioni (ma non completamente).
+❌ Sensibile a cambiamenti di scala e grandi rotazioni (non è completamente invariante).
+❌ Computazionalmente pesante rispetto a BRIEF (richiede calcoli sui gradienti e normalizzazione).
+*/

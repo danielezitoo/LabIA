@@ -1,9 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <vector>
-#include <iostream>
-
-using namespace cv;
-using namespace std;
+#include "globals.h"
 
 /*
 FAST utilizza un cerchio di 16 pixel, ossia un cerchio di Bresenham di raggio 3,
@@ -72,7 +67,7 @@ void nonMaximumSuppression(vector<KeyPoint> &keypoints, const Mat &img, int dist
     vector<float> V_keypoints(keypoints.size());
 
     // Calcola V per ogni keypoint
-    for (size_t i = 0; i < keypoints.size(); i++) {
+    for (int i = 0; i < keypoints.size(); i++) {
         KeyPoint kp = keypoints[i];
         int x = kp.pt.x;
         int y = kp.pt.y;
@@ -94,13 +89,13 @@ void nonMaximumSuppression(vector<KeyPoint> &keypoints, const Mat &img, int dist
     }
 
     // Rimuove i keypoint con V più basso rispetto ai vicini
-    for (size_t i = 0; i < keypoints.size(); i++) {
+    for (int i = 0; i < keypoints.size(); i++) {
         KeyPoint kp = keypoints[i];
         int x = kp.pt.x;
         int y = kp.pt.y;
 
         // Confronta con i keypoint vicini
-        for (size_t j = 0; j < keypoints.size(); j++) {
+        for (int j = 0; j < keypoints.size(); j++) {
             if (i != j) {
                 KeyPoint kp2 = keypoints[j];
                 int x2 = kp2.pt.x;
@@ -108,7 +103,7 @@ void nonMaximumSuppression(vector<KeyPoint> &keypoints, const Mat &img, int dist
 
                 // Se i keypoint sono vicini (ad esempio a distanza di 'dist' pixel)
                 if (abs(x - x2) <= dist && abs(y - y2) <= dist) {
-                    // Se il punteggio del primo keypoint è inferiore a quello del secondo, lo rimuove
+                    // Se V del primo keypoint è inferiore a quello del secondo, lo rimuove
                     if (V_keypoints[i] < V_keypoints[j]) {
                         keypoints.erase(keypoints.begin() + i);
                         i--;
@@ -164,3 +159,11 @@ vector<KeyPoint> fastCornerDetection(const Mat &img, int threshold = 50, int n =
 
     return keypoints;
 }
+
+/*
+✅ Molto veloce: non richiede il calcolo di derivate o matrici.
+✅ Efficace su immagini in movimento o tempo reale.
+❌ Non robusto alla rotazione.
+❌ Non fornisce una misura della risposta del corner: solo una classificazione binaria, non "quanto forte".
+❌ Non invariante alla scala: il raggio fisso del cerchio lo rende inadatto a scale diverse.
+*/

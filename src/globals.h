@@ -4,15 +4,34 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/features2d.hpp>
 #include <vector>
+#include <iostream>
+#include <cstring>
+#include <sstream>
+#include <opencv2/highgui.hpp>
+#include <filesystem>
+#include <opencv2/calib3d.hpp>
+#include <bitset>
+#include <random>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+// Per levare i warning generati dalle Trackbar
+#include <opencv2/core/utils/logger.hpp>
 
 using namespace cv;
 using namespace std;
+namespace fs = std::filesystem;
 
 bool checkImage(Mat& img, const string& imgPath);
-void mergeImages(const Mat& img1, const Mat& img2, const vector<KeyPoint>& keypoints1, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches);
+void mergeImages(const Mat& img1, const Mat& img2, const vector<KeyPoint>& keypoints1, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches, double threshold, int maxIterations);
+void drawCorners(Mat &img, const vector<KeyPoint> &keypoints);
+vector<DMatch> ransac(const vector<KeyPoint>& keypoints1, const vector<KeyPoint>& keypoints2, const vector<DMatch>& matches, double threshold, int maxIterations);
+void saveImageKP(const Mat &img, const string &imgPath, const string &command);
+void saveImageM(const Mat &img, const string &imgPath1, const string &imgPath2, const string &command);
+void saveImageP(const Mat &img, const string &imgPath1, const string &imgPath2, const string &command);
 
 // Dichiarazione delle variabili globali
-extern Mat img, imgWithCorners, img1, img2, imgMatches, descriptors1, descriptors2, imgCopy;
+extern Mat img, imgWithCorners, img1, img2, imgMatches, descriptors1, descriptors2, imgCopy, panorama;
 extern vector<KeyPoint> keypoints, keypoints1, keypoints2;
 extern vector<DMatch> matches;
 
@@ -67,5 +86,9 @@ extern int patch_size_bar_match_shi_tomasi;
 extern int n_bits_bar_match_shi_tomasi;
 extern int threshold_bar_ransac_shi_tomasi;
 extern int maxIterations_bar_ransac_shi_tomasi;
+
+// Parametro per fare merge se richiesto
+extern bool merge_after_match;
+extern bool merge_tot;
 
 #endif

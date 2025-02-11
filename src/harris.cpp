@@ -1,8 +1,4 @@
-#include <opencv2/opencv.hpp>
-#include <iostream>
-
-using namespace cv;
-using namespace std;
+#include "globals.h"
 
 Mat rgbToGrayscale(const Mat& imgRGB) {
     Mat imgGray(imgRGB.size(), CV_32F);
@@ -34,6 +30,7 @@ tuple<Mat, Mat, Mat> structureTensorSetup(const Mat& Ix, const Mat& Iy, int wind
 
     // La funzione mul() esegue una moltiplicazione elemento per elemento tra due matrici.
     // Quindi crea una matrice in cui ogni elemento è il quadrato dell'elemento corrispondente
+    // (o Ix * Iy)
 
     Mat IxIx = Ix.mul(Ix); 
     Mat IyIy = Iy.mul(Iy);
@@ -65,7 +62,7 @@ Mat harrisResponse(const Mat& SxSx, const Mat& SySy, const Mat& SxSy) {
                                                         //    k is an empirically determined constant: k in [0.04, 0.06].
             }
             else {
-                corners.at<float>(y, x) = det / trace;
+                corners.at<float>(y, x) = 0;
             }
 
         }
@@ -123,7 +120,7 @@ Mat nonms(const Mat& corners, float threshold) {
 }
 */
 
-vector<KeyPoint> extractKeypoints(const Mat& corners, float threshold = 0.2) {
+vector<KeyPoint> extractKeypoints(const Mat& corners) {
     vector<KeyPoint> keypoints;
     
     for (int y = 0; y < corners.rows; y++) {
@@ -160,3 +157,10 @@ vector<KeyPoint> harrisCornerDetection(const Mat& imgRGB, int window = 3, double
     
     return extractKeypoints(corners);
 }
+
+/*
+✅ Robustezza: invarianza alla rotazione e alle variazioni di luminosità.
+✅ Precisione: identifica bene i corner.
+❌ Sensibile a variazioni di scala: non funziona bene se un oggetto viene ridimensionato.
+❌ Computationally expensive.
+*/
