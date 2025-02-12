@@ -104,6 +104,7 @@ Mat computeHOG(const Mat &img, const vector<KeyPoint> &keypoints, int cellSize =
     return descriptors;
 }
 
+// Il matching avviene confrontando i descrittori con la distanza di Euclide.
 vector<DMatch> matchHOG(const Mat &descriptor1, const Mat &descriptor2) {
     vector<DMatch> matches;
     

@@ -2,6 +2,7 @@
 
 void updateCornersFast(int, void*) {
     imgWithCorners = img.clone();
+    cvtColor(imgWithCorners, imgWithCorners, COLOR_GRAY2BGR);
 
     int64 start = getTickCount();
 

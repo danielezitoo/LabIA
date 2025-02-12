@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
     string imgPath1;
     string imgPath2;
 
-    cout << "\nInserisci il numero della prima immagine:\n";
+    cout << "\nInserisci il percorso della prima immagine:\n";
 
     string filename;
     cin >> filename;
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
         imgPath1=path;
     }
 
-    cout << "Inserisci il numero della seconda immagine:\n";
+    cout << "Inserisci il percorso della seconda immagine:\n";
 
     cin >> filename;
     path = "immagini/" + filename + ".jpg";
